@@ -5,6 +5,8 @@ AngularJS service for throttling $http requests
 
 Requires AngularJS >= 1.1.5
 
+Inspired by the angular-http-auth module @ https://github.com/witoldsz/angular-http-auth
+
 # Usage
 
 Add the http-throttler module as a dependency to your application module:
