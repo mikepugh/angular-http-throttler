@@ -3,53 +3,60 @@
  * (c) 2013 Mike Pugh
  * License: MIT
  */
-
-
 (function() {
-  "use strict";  angular.module('http-throttler', ['http-interceptor-buffer']).factory("httpThrottler", [
-    '$q', '$log', 'httpBuffer', function($q, $log, httpBuffer) {
-      var reqCount, service;
+  "use strict";  angular.module('http-throttler', ['http-interceptor-buffer'])
+  .provider('httpThrottler', function() {
+    var maxConcurrentRequests = 10;
+    this.maxConcurrentRequests = function(val) {
+      maxConcurrentRequests = val || maxConcurrentRequests;
+      return maxConcurrentRequests;
+    };
+    this.$get = [
+      '$q', '$log', 'httpBuffer', function($q, $log, httpBuffer) {
+        var reqCount, service;
 
-      reqCount = 0;
-      service = {
-        request: function(config) {
-          var deferred;
+        reqCount = 0;
+        service = {
+          request: function(config) {
+            var deferred;
 
-          $log.info("Incoming Request - current count = " + reqCount);
-          if (reqCount >= 10) {
-            $log.warn("Too many requests");
-            deferred = $q.defer();
-            httpBuffer.append(config, deferred);
-            return deferred.promise;
-          } else {
-            reqCount++;
-            return config || $q.when(config);
+            $log.debug("Incoming Request - current count = " + reqCount);
+            if (reqCount >= maxConcurrentRequests) {
+              $log.warn("Too many requests");
+              deferred = $q.defer();
+              httpBuffer.append(config, deferred);
+              return deferred.promise;
+            } else {
+              reqCount++;
+              return config || $q.when(config);
+            }
+          },
+          response: function(response) {
+            if (!httpBuffer.retryOne()) {
+              reqCount--;
+            }
+            $log.debug("Response received from server - new count = " + reqCount);
+            return response || $q.when(response);
           }
-        },
-        response: function(response) {
-          $log.info("Response received from server");
-          reqCount--;
-          httpBuffer.retryOne();
-          return response || $q.when(response);
-        }
-      };
-      return service;
-    }
-  ]);
-
+        };
+        return service;
+      }
+    ];
+  });
   angular.module('http-interceptor-buffer', []).factory('httpBuffer', [
     '$log', function($log) {
       var buffer, retryHttpRequest, service;
 
       buffer = [];
       retryHttpRequest = function(config, deferred) {
-        if (config != null) {
-          $log.info("Resolving config promise");
+        if (config !== null) {
           return deferred.resolve(config);
         }
+        $log.debug("Config is null!!");
       };
       service = {
         append: function(config, deferred) {
+          $log.debug('Adding to buffer, current buffer size = ' + buffer.length);
           return buffer.push({
             config: config,
             deferred: deferred
@@ -60,8 +67,11 @@
 
           if (buffer.length > 0) {
             req = buffer.pop();
-            return retryHttpRequest(req.config, req.deferred);
+            $log.debug('Removed from buffer, new buffer size = ' + buffer.length);
+            retryHttpRequest(req.config, req.deferred);
+            return true;
           }
+          return false;
         }
       };
       return service;
