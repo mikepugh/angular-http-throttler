@@ -4,7 +4,47 @@
  * License: MIT
  */
 (function() {
-  "use strict";  angular.module('http-throttler', ['http-interceptor-buffer']).factory("httpThrottler", [
+  "use strict";  angular.module('http-throttler', ['http-interceptor-buffer'])
+  .provider('httpThrottler', function() {
+    var maxConcurrentRequests = 10;
+    this.maxConcurrentRequests = function(val) {
+      maxConcurrentRequests = val || maxConcurrentRequests;
+      return maxConcurrentRequests;
+    };
+    this.$get = [
+      '$q', '$log', 'httpBuffer', function($q, $log, httpBuffer) {
+        var reqCount, service;
+
+        reqCount = 0;
+        service = {
+          request: function(config) {
+            var deferred;
+
+            $log.debug("Incoming Request - current count = " + reqCount);
+            if (reqCount >= maxConcurrentRequests) {
+              $log.warn("Too many requests");
+              deferred = $q.defer();
+              httpBuffer.append(config, deferred);
+              return deferred.promise;
+            } else {
+              reqCount++;
+              return config || $q.when(config);
+            }
+          },
+          response: function(response) {
+            if (!httpBuffer.retryOne()) {
+              reqCount--;
+            }
+            $log.debug("Response received from server - new count = " + reqCount);
+            return response || $q.when(response);
+          }
+        };
+        return service;
+      }
+    ];
+  })
+
+  .factory("httpThrottler", [
     '$q', '$log', 'httpBuffer', function($q, $log, httpBuffer) {
       var reqCount, service;
 
