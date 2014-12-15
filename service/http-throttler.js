@@ -42,47 +42,14 @@
         return service;
       }
     ];
-  })
-
-  .factory("httpThrottler", [
-    '$q', '$log', 'httpBuffer', function($q, $log, httpBuffer) {
-      var reqCount, service;
-
-      reqCount = 0;
-      service = {
-        request: function(config) {
-          var deferred;
-
-          $log.debug("Incoming Request - current count = " + reqCount);
-          if (reqCount >= 10) {
-            $log.warn("Too many requests");
-            deferred = $q.defer();
-            httpBuffer.append(config, deferred);
-            return deferred.promise;
-          } else {
-            reqCount++;
-            return config || $q.when(config);
-          }
-        },
-        response: function(response) {
-          if (!httpBuffer.retryOne()) {
-            reqCount--;
-          }
-          $log.debug("Response received from server - new count = " + reqCount);
-          return response || $q.when(response);
-        }
-      };
-      return service;
-    }
-  ]);
-
+  });
   angular.module('http-interceptor-buffer', []).factory('httpBuffer', [
     '$log', function($log) {
       var buffer, retryHttpRequest, service;
 
       buffer = [];
       retryHttpRequest = function(config, deferred) {
-        if (config != null) {
+        if (config !== null) {
           return deferred.resolve(config);
         }
         $log.debug("Config is null!!");
