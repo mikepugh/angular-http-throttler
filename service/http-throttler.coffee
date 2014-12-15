@@ -4,6 +4,9 @@
  * License: MIT
  */
 
+/*
+ * Still at d84060a as I don't know coffee script 
+ */
 "use strict"
 
 angular.module('http-throttler', ['http-interceptor-buffer'])
