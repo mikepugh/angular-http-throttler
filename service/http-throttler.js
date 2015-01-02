@@ -17,11 +17,11 @@
 
         reqCount = 0;
 
-		var decrement = function(){
-	        if (!httpBuffer.retryOne()) {
+        var decrement = function(){
+            if (!httpBuffer.retryOne()) {
               reqCount--;
             }	
-		};
+        };
 		
         service = {
           request: function(config) {
