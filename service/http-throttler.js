@@ -16,6 +16,13 @@
         var reqCount, service;
 
         reqCount = 0;
+
+        var decrement = function(){
+            if (!httpBuffer.retryOne()) {
+              reqCount--;
+            }	
+        };
+		
         service = {
           request: function(config) {
             var deferred;
@@ -32,11 +39,14 @@
             }
           },
           response: function(response) {
-            if (!httpBuffer.retryOne()) {
-              reqCount--;
-            }
+            decrement();
             $log.debug("Response received from server - new count = " + reqCount);
             return response || $q.when(response);
+          },
+          responseError: function(rejection) {
+            decrement();
+            $log.debug("ResponseError received from server - new count = " + reqCount);			
+            return $q.reject(rejection);
           }
         };
         return service;
