@@ -76,7 +76,7 @@
           var req;
 
           if (buffer.length > 0) {
-            req = buffer.pop();
+            req = buffer.shift();
             $log.debug('Removed from buffer, new buffer size = ' + buffer.length);
             retryHttpRequest(req.config, req.deferred);
             return true;
