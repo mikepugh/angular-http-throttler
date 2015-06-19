@@ -31,8 +31,10 @@
             if (reqCount >= maxConcurrentRequests) {
               $log.warn("Too many requests");
               deferred = $q.defer();
-              httpBuffer.append(config, deferred);
-              return deferred.promise;
+              httpBuffer.append(deferred);
+              return deferred.promise.then(function(){
+                return config || $q.when(config);
+              });
             } else {
               reqCount++;
               return config || $q.when(config);
@@ -55,30 +57,22 @@
   });
   angular.module('http-interceptor-buffer', []).factory('httpBuffer', [
     '$log', function($log) {
-      var buffer, retryHttpRequest, service;
+      var buffer, service;
 
       buffer = [];
-      retryHttpRequest = function(config, deferred) {
-        if (config !== null) {
-          return deferred.resolve(config);
-        }
-        $log.debug("Config is null!!");
-      };
+      
       service = {
         append: function(config, deferred) {
           $log.debug('Adding to buffer, current buffer size = ' + buffer.length);
-          return buffer.push({
-            config: config,
-            deferred: deferred
-          });
+          return buffer.push(deferred);
         },
         retryOne: function() {
-          var req;
+          var deferred;
 
           if (buffer.length > 0) {
-            req = buffer.shift();
+            deferred = buffer.shift();
             $log.debug('Removed from buffer, new buffer size = ' + buffer.length);
-            retryHttpRequest(req.config, req.deferred);
+            deferred.resolve();
             return true;
           }
           return false;
