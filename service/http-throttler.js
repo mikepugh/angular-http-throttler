@@ -17,10 +17,14 @@
 
         reqCount = 0;
 
+        var increment = function(config){
+          reqCount++;
+          return config || $q.when(config);
+        };
+
         var decrement = function(){
-            if (!httpBuffer.retryOne()) {
-              reqCount--;
-            }	
+          reqCount--;
+          httpBuffer.retryOne();
         };
 		
         service = {
@@ -33,11 +37,10 @@
               deferred = $q.defer();
               httpBuffer.append(deferred);
               return deferred.promise.then(function(){
-                return config || $q.when(config);
+                return increment(config);
               });
             } else {
-              reqCount++;
-              return config || $q.when(config);
+              return increment(config);
             }
           },
           response: function(response) {
@@ -60,7 +63,7 @@
       var buffer, service;
 
       buffer = [];
-      
+
       service = {
         append: function(config, deferred) {
           $log.debug('Adding to buffer, current buffer size = ' + buffer.length);
@@ -73,9 +76,7 @@
             deferred = buffer.shift();
             $log.debug('Removed from buffer, new buffer size = ' + buffer.length);
             deferred.resolve();
-            return true;
           }
-          return false;
         }
       };
       return service;
