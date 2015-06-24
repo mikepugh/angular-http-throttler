@@ -17,10 +17,14 @@
 
         reqCount = 0;
 
+        var increment = function(config){
+          reqCount++;
+          return config || $q.when(config);
+        };
+
         var decrement = function(){
-            if (!httpBuffer.retryOne()) {
-              reqCount--;
-            }	
+          reqCount--;
+          httpBuffer.retryOne();
         };
 		
         service = {
@@ -31,11 +35,12 @@
             if (reqCount >= maxConcurrentRequests) {
               $log.warn("Too many requests");
               deferred = $q.defer();
-              httpBuffer.append(config, deferred);
-              return deferred.promise;
+              httpBuffer.append(deferred);
+              return deferred.promise.then(function(){
+                return increment(config);
+              });
             } else {
-              reqCount++;
-              return config || $q.when(config);
+              return increment(config);
             }
           },
           response: function(response) {
@@ -55,33 +60,23 @@
   });
   angular.module('http-interceptor-buffer', []).factory('httpBuffer', [
     '$log', function($log) {
-      var buffer, retryHttpRequest, service;
+      var buffer, service;
 
       buffer = [];
-      retryHttpRequest = function(config, deferred) {
-        if (config !== null) {
-          return deferred.resolve(config);
-        }
-        $log.debug("Config is null!!");
-      };
+
       service = {
         append: function(config, deferred) {
           $log.debug('Adding to buffer, current buffer size = ' + buffer.length);
-          return buffer.push({
-            config: config,
-            deferred: deferred
-          });
+          return buffer.push(deferred);
         },
         retryOne: function() {
-          var req;
+          var deferred;
 
           if (buffer.length > 0) {
-            req = buffer.pop();
+            deferred = buffer.shift();
             $log.debug('Removed from buffer, new buffer size = ' + buffer.length);
-            retryHttpRequest(req.config, req.deferred);
-            return true;
+            deferred.resolve();
           }
-          return false;
         }
       };
       return service;
